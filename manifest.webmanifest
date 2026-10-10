@@ -1,0 +1,25 @@
+{
+  "name": "MEW HARVEST",
+  "short_name": "MEW HARVEST",
+  "description": "A living cat farming village.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#8cbc50",
+  "theme_color": "#376d36",
+  "icons": [
+    {
+      "src": "farmer-icon-192-v85.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "farmer-icon-512-v85.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
