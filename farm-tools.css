@@ -1,0 +1,13 @@
+#farmToolsButton{min-width:38px;min-height:38px;font-size:21px;cursor:pointer}
+.farm-tools-dialog{border:2px solid #638c47;border-radius:18px;background:#f9fff1;color:#263b21;width:min(92vw,440px);max-height:86dvh;padding:0;box-shadow:0 15px 45px #0007}
+.farm-tools-dialog::backdrop{background:#172b19a9}
+.ft-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#d7edb7;gap:10px}
+.ft-head h2{font-size:1.2rem;margin:0}.ft-head button{border:0;background:#fff;border-radius:9px;padding:8px 12px;font-size:18px}
+.ft-body{padding:14px 16px;overflow-y:auto;max-height:calc(86dvh - 65px);font-size:14px}
+.ft-body h3{margin:18px 0 8px;font-size:1.05rem}.ft-body p{line-height:1.45}
+.ft-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.ft-stats>div{background:#e7f3d6;border-radius:10px;padding:9px;display:flex;flex-direction:column;gap:3px}
+.ft-stats strong{font-size:1.2rem}.ft-milestone{display:grid;grid-template-columns:1fr auto;gap:4px 8px;margin:10px 0}
+.ft-milestone progress{grid-column:1/-1;width:100%;accent-color:#56863d;height:9px}
+.ft-actions{display:flex;flex-wrap:wrap;gap:9px}.ft-actions button{border:0;background:#376d36;color:white;padding:11px 12px;border-radius:10px;font-weight:700;cursor:pointer}
+#ftMessage{min-height:1.3em;font-weight:600}
