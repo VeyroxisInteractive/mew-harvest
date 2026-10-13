@@ -1,1 +1,1 @@
-MEW HARVEST game assets
+Game artwork
