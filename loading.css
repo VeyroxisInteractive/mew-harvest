@@ -1,119 +1,17 @@
-/* Only the existing loading overlay. All artwork is shared with the farm. */
-#loading {
- --load-ink:#526b35;--load-sky:#cfe7d6;--load-horizon:#f5ebc9;--load-far:#b0c8a0;--load-hill:#9bb67b;--load-meadow:#c3ce89;
- position:fixed;inset:0;z-index:100;display:grid;grid-template-columns:minmax(0,1fr);place-items:center;gap:0;
- padding:max(18px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
- background:linear-gradient(180deg,var(--load-sky),var(--load-horizon) 65%,#e4e8bb);color:var(--load-ink);
- overflow:hidden;isolation:isolate;opacity:1;transition:opacity .24s ease-out;
-}
-#loading[hidden]{display:none}
-#loading[data-loading-time="evening"]{--load-ink:#70553d;--load-sky:#e9cfb5;--load-horizon:#fae6c4;--load-far:#b2b68d;--load-hill:#9da77b;--load-meadow:#c2be87}
-#loading[data-loading-time="night"]{--load-ink:#f5ebcc;--load-sky:#344f66;--load-horizon:#75928c;--load-far:#647f77;--load-hill:#597966;--load-meadow:#82996b;background:linear-gradient(#263f56,#536e6c)}
-#loading[data-weather="rain"]{--load-sky:#b6ceca;--load-horizon:#d9dfcd;--load-far:#9bb4a5}
-#loading[data-loading-time="night"][data-weather="rain"]{--load-sky:#344d60;--load-horizon:#6c8684;--load-far:#607b76}
-#loading .loading-content{width:min(100%,570px);display:flex;flex-direction:column;align-items:center;text-align:center}
-#loading .loading-brand{display:block;margin:0;font-size:clamp(28px,7.3vw,43px);font-weight:900;letter-spacing:.07em;line-height:1.15;color:var(--load-ink);text-shadow:0 2px #fff3;animation:loading-logo .65s ease-out both}
-#loading .loading-tagline{font-size:12px;letter-spacing:.07em;margin:9px 0 0;opacity:.8}
-#loading .loading-scene{width:100%;height:auto;max-height:290px;margin:22px 0 9px;overflow:visible;contain:layout style}
-#loading .loading-info{width:min(100%,350px);min-height:170px}
-#loading .loading-message{font-size:clamp(14px,3.8vw,17px);font-weight:bold;line-height:1.4;min-height:2.8em;margin:0 0 38px;padding:0 10px;display:flex;align-items:center;justify-content:center}
-.loading-dots{display:inline-flex;width:18px;flex-shrink:0;text-align:left}
-.loading-dots i{font-style:normal}
-.loading-dots i:nth-child(2){animation:loading-dot-two 1.5s steps(1,end) infinite}.loading-dots i:nth-child(3){animation:loading-dot-three 1.5s steps(1,end) infinite}
-.loading-path{position:relative;height:13px;margin:0 20px 10px;background:#b59364;border:2px solid #a17d52;border-radius:60% 45% 45% 55% / 40%;box-shadow:0 2px 0 #f7e8b6;--load-progress:0}
-.loading-path:after{content:"";position:absolute;inset:0;border-radius:inherit;background:radial-gradient(ellipse at 15% 50%,#805f3e66 0 2px,transparent 3px),radial-gradient(ellipse at 65% 70%,#805f3e66 0 2px,transparent 3px);pointer-events:none}
-.loading-path-fill{position:absolute;inset:0;background:#e2c891;border-radius:inherit;transform:scaleX(var(--load-progress));transform-origin:left;transition:transform .25s linear}
-.loading-marker-track{position:absolute;inset:0 13px;transform:translateX(calc(var(--load-progress) * 100%));transition:transform .25s linear}
-.loading-marker{position:absolute;bottom:1px;left:-27px;width:54px;height:54px}
-.loading-marker img{display:block;width:54px;height:54px}
-.loading-path:not([aria-valuenow]) .loading-marker-track{animation:loading-search 3s ease-in-out infinite alternate}
-.loading-path:not([aria-valuenow]) .loading-path-fill{transform:scaleX(.15);opacity:.5}
-#loading #loading-message,#loading .loading-message-text{font-size:inherit}
-#loading #loading-detail{display:block;font-size:11px;line-height:1.5;opacity:.85}
-#loading .loading-tip{font-size:12px;line-height:1.5;min-height:3em;margin:13px 5px 0;max-width:340px}
-#loading-sound{font-size:12px;min-height:44px;padding:8px 16px;background:#fff4dca6;border:1px solid #947c4c66;border-radius:22px;margin:4px 0 0;color:#53633b}
-#loading-sound[hidden]{display:none}
-#loading.is-leaving{opacity:0;pointer-events:none}
-/* The existing first-visit dialog is in the browser's top layer. Let it reveal
-   with the loading fade without changing when the game's intro opens. */
-@media(prefers-reduced-motion:no-preference){
- @supports selector(body:has(#loading)){
-  body:has(#loading:not([hidden])) #sheet,body:has(#loading:not([hidden])) #sheet::backdrop{opacity:0}
-  body:has(#loading.is-leaving:not([hidden])) #sheet,body:has(#loading.is-leaving:not([hidden])) #sheet::backdrop{animation:loading-reveal .24s ease-out both}
- }
-}
-.loading-sun{opacity:.55;transition:opacity 1.4s ease}
-.loading-dawn{opacity:0;transition:opacity 1.4s ease;pointer-events:none}
-#loading.is-sunrise .loading-dawn{opacity:.1}
-#loading.is-sunrise .loading-sun{opacity:1}
-#loading[data-loading-time="night"] .loading-sun{fill:#e7ecd6;opacity:.8}
-#loading[data-weather="rain"] .loading-sun{opacity:.15}
-.loading-cloud{opacity:.55;animation:loading-cloud 65s ease-in-out infinite alternate}
-.cloud-two{animation-duration:80s;animation-direction:alternate-reverse;opacity:.4}
-.loading-tree{opacity:.78;transform-origin:85px 196px;animation:loading-sway 7s ease-in-out infinite alternate}
-.loading-cottage{opacity:.85}
-.loading-smoke{opacity:0;animation:loading-smoke 6s ease-out infinite}
-.loading-water{animation:loading-water 4s ease-in-out infinite alternate}
-.loading-breeze{transform-origin:300px 260px;animation:loading-sway 4s ease-in-out infinite alternate}
-.loading-wheat{transform-origin:62px 272px;animation:loading-sway 4.5s ease-in-out infinite alternate}
-.loading-walker{animation:loading-walk 12s linear infinite}
-.loading-leg{animation:loading-step .6s ease-in-out infinite alternate}
-.loading-leg.leg-right{animation-delay:-.6s}
-.loading-paws use{opacity:0;animation:loading-print 12s linear infinite;animation-delay:var(--step)}
-.loading-butterflies,.loading-leaf,.loading-birds,.loading-fireflies,.loading-cameo,.loading-rainbow,.loading-rain{display:none}
-#loading[data-accent="butterflies"] .loading-butterflies,#loading[data-accent="special-butterfly"] .loading-butterflies{display:block}
-#loading[data-accent="special-butterfly"] .loading-butterflies{fill:#91bddc}
-.loading-butterfly{opacity:0;animation:loading-flutter 20s linear infinite}
-.loading-wings{animation:loading-wings .3s ease-in-out infinite alternate}
-.butterfly-two{display:none;animation-delay:1.3s}
-#loading[data-pair="true"] .butterfly-two{display:block}
-#loading[data-accent="leaf"] .loading-leaf{display:block;opacity:0;animation:loading-leaf 24s linear infinite}
-#loading[data-accent="birds"] .loading-birds{display:block;opacity:0;animation:loading-birds 22s linear infinite}
-#loading[data-accent="fireflies"] .loading-fireflies{display:block}
-.loading-fireflies circle{opacity:0;animation:loading-firefly 5s ease-in-out infinite alternate}
-.loading-fireflies circle:nth-child(2){animation-delay:2s}.loading-fireflies circle:nth-child(3){animation-delay:3.5s}
-#loading[data-accent="cameo"] .loading-cameo{display:block;opacity:0;animation:loading-cameo 22s ease-in-out infinite}
-#loading[data-accent="rainbow"] .loading-rainbow{display:block;animation:loading-rainbow 12s ease-in-out both}
-#loading[data-weather="rain"] .loading-rain{display:block;animation:loading-rain 1.8s linear infinite}
-#loading[data-water-motion="false"] .loading-water{animation:none}
-#loading.is-paused *,#loading.is-paused *:before,#loading.is-paused *:after{animation-play-state:paused!important;transition:none!important}
-@keyframes loading-logo{from{opacity:0;transform:translateY(6px) scale(.97)}to{opacity:1;transform:none}}
-@keyframes loading-reveal{from{opacity:0}to{opacity:1}}
-@keyframes loading-dot-two{0%,32%{opacity:0}33%,100%{opacity:1}}
-@keyframes loading-dot-three{0%,65%{opacity:0}66%,100%{opacity:1}}
-@keyframes loading-search{from{transform:translateX(0)}to{transform:translateX(100%)}}
-@keyframes loading-cloud{to{transform:translateX(35px)}}
-@keyframes loading-sway{from{transform:rotate(-.8deg)}to{transform:rotate(1deg)}}
-@keyframes loading-smoke{0%{opacity:0;transform:translateY(0)}30%{opacity:.3}100%{opacity:0;transform:translate(9px,-23px)}}
-@keyframes loading-water{to{transform:translate(4px,2px);opacity:.3}}
-@keyframes loading-walk{0%{transform:translateX(0);opacity:0}6%{opacity:1}90%{opacity:1}100%{transform:translateX(220px);opacity:0}}
-@keyframes loading-step{from{transform:translate(-1px,0)}to{transform:translate(1px,-1.5px)}}
-@keyframes loading-print{0%,5%{opacity:0}7%,15%{opacity:.5}32%,100%{opacity:0}}
-@keyframes loading-flutter{0%{opacity:0;transform:translate(165px,185px)}5%{opacity:1}14%{transform:translate(235px,135px)}24%{transform:translate(300px,160px);opacity:1}30%,100%{transform:translate(350px,115px);opacity:0}}
-@keyframes loading-wings{to{transform:scaleX(.4)}}
-@keyframes loading-leaf{0%,15%{opacity:0;transform:translate(125px,90px) rotate(-35deg)}20%{opacity:.65}30%{transform:translate(275px,155px) rotate(35deg)}42%,100%{opacity:0;transform:translate(448px,225px) rotate(100deg)}}
-@keyframes loading-birds{0%,8%{opacity:0;transform:translate(45px,78px)}12%,27%{opacity:.5}33%,100%{opacity:0;transform:translate(490px,52px)}}
-@keyframes loading-firefly{50%{opacity:.8;transform:translate(3px,-5px)}100%{opacity:.1;transform:translate(-2px,-9px)}}
-@keyframes loading-cameo{0%,12%{opacity:0;transform:translateX(0)}17%,32%{opacity:1}38%,100%{opacity:0;transform:translateX(35px)}}
-@keyframes loading-rainbow{0%{opacity:0}25%,70%{opacity:.4}100%{opacity:0}}
-@keyframes loading-rain{to{transform:translate(-7px,22px)}}
-@media(max-height:540px) and (orientation:landscape){
- #loading .loading-content{width:min(100%,760px);display:grid;grid-template-columns:1fr 1fr;column-gap:20px}
- #loading .loading-brand{grid-column:1/-1;font-size:28px}
- #loading .loading-tagline{grid-column:1/-1;margin-top:4px;font-size:11px}
- #loading .loading-scene{margin:12px 0 0}
- #loading .loading-info{min-height:0;margin-top:18px}
- #loading .loading-message{font-size:14px;margin-bottom:34px}
- #loading .loading-tip{margin-top:8px;font-size:11px;min-height:3em}
- #loading-sound{margin:0}
-}
-@media(max-width:360px){#loading .loading-scene{margin-top:16px}#loading .loading-tagline{font-size:11px}}
-@media(prefers-reduced-motion:reduce){
- #loading,#loading *{animation:none!important;transition:none!important}
- #loading .loading-walker{transform:translateX(105px)}
- #loading .loading-path:not([aria-valuenow]) .loading-marker-track{transform:translateX(50%)}
- #loading .loading-butterflies,#loading .loading-birds,#loading .loading-leaf,#loading .loading-cameo,#loading .loading-fireflies,#loading .loading-smoke,#loading .loading-rain{display:none}
- #loading .loading-rainbow{opacity:.3}
-}
-
-#loading .loading-credit{font-size:12px;margin-top:10px;letter-spacing:.03em}#loading .loading-credit strong{color:inherit}@media(max-height:540px) and (orientation:landscape){#loading .loading-credit{grid-column:1/-1;margin-top:4px}}
+/* MEW HARVEST 104. The original loader lifecycle, with the approved sunrise art. */
+#loading{position:fixed;inset:0;z-index:100;isolation:isolate;overflow:hidden;display:grid;place-items:center;padding:0;background:#566239;color:#fff0cf;opacity:1;transition:opacity .24s ease-out;font-family:Georgia,'Times New Roman',serif}
+#loading[hidden]{display:none}#loading *{box-sizing:border-box}.loading-backdrop{position:absolute;inset:-35px;z-index:-1;background:linear-gradient(#1c3f3266,#1d281d99),url('loading-art-104.webp') center/cover;filter:blur(22px);transform:scale(1.08)}
+#loading .loading-content{position:relative;width:min(100vw,56.25vh);height:min(100vh,177.778vw);width:min(100vw,56.25svh);height:min(100svh,177.778vw);margin:0;padding:0}
+.loading-poster{position:absolute;inset:0;overflow:hidden}.loading-poster>img{display:block;width:100%;height:100%;object-fit:contain}.loading-sunlight{position:absolute;inset:10% -10% 30% 20%;pointer-events:none;background:radial-gradient(ellipse at 85% 25%,#ffe18e3d,transparent 57%);mix-blend-mode:screen;animation:load-sunlight 7s ease-in-out infinite alternate}
+.loading-motes{position:absolute;inset:20% 6% 10%;pointer-events:none}.loading-motes i{position:absolute;width:3px;height:3px;background:#ffe8a4;border-radius:50%;box-shadow:0 0 7px 2px #ffd77a66;opacity:0;animation:load-mote 6s ease-in-out infinite}.loading-motes i:nth-child(1){left:12%;top:52%}.loading-motes i:nth-child(2){left:82%;top:64%;animation-delay:-1.2s}.loading-motes i:nth-child(3){left:63%;top:23%;animation-delay:-3.6s}.loading-motes i:nth-child(4){left:22%;top:79%;animation-delay:-2.1s}.loading-motes i:nth-child(5){left:89%;top:40%;animation-delay:-4.5s}.loading-motes i:nth-child(6){left:37%;top:32%;animation-delay:-.6s}.loading-motes i:nth-child(7){left:72%;top:78%;animation-delay:-2.8s}.loading-motes i:nth-child(8){left:4%;top:28%;animation-delay:-5.1s}
+#loading .loading-info{position:absolute;left:11%;right:11%;bottom:5.3%;text-align:center;min-height:0;width:auto;padding:0;color:#fff0cf;text-shadow:0 2px 5px #3b241a}
+#loading .loading-message{margin:0 0 12px;padding:0;font-size:clamp(18px,4.6vw,30px);line-height:1.15;font-weight:700;min-height:1.15em}.loading-dots{display:inline-block;animation:load-dots 1.5s ease-in-out infinite}
+#loading .loading-path{position:relative;height:22px;border:3px solid #dfac5b;border-radius:16px;box-shadow:0 2px 0 #71451f,0 0 0 1px #70431e,inset 0 2px 5px #4c260f;background:linear-gradient(#80512c,#9c6332);margin:0;--load-progress:0}
+.loading-path-fill{position:absolute;inset:2px;transform:scaleX(var(--load-progress));transform-origin:left;border-radius:12px;background:linear-gradient(#fff0a5 0,#ffc44c 33%,#eea313 65%,#ffd36e);box-shadow:0 0 8px #efbd4244;transition:transform .24s linear;overflow:hidden}.loading-path-fill:after{content:'';position:absolute;inset:0;background:linear-gradient(110deg,transparent 25%,#fff9cc9c 50%,transparent 75%);width:70%;animation:load-shine 2.5s linear infinite}.loading-marker-track{position:absolute;left:0;top:-10px;width:100%;height:34px;transform:translateX(calc(var(--load-progress)*100%));transition:transform .24s linear;pointer-events:none}.loading-marker-track svg{position:absolute;left:-15px;width:30px;height:30px;filter:drop-shadow(0 2px 2px #352b1b99)}.loading-pawprints{position:absolute;inset:0 5px 0 0;display:flex;justify-content:flex-end;align-items:center;gap:12px;opacity:.35;font-size:12px;filter:sepia(1);pointer-events:none}.loading-path:not([aria-valuenow]) .loading-path-fill{transform:scaleX(.12);opacity:.6}.loading-path:not([aria-valuenow]) .loading-marker-track{transform:translateX(12%)}
+.loading-status{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:10px;min-height:15px}#loading #loading-detail{font:11px system-ui,sans-serif;color:#fff0d0;text-align:left}#loading-percent{font:600 11px system-ui,sans-serif;color:#ffe1a4;font-variant-numeric:tabular-nums}#loading .loading-tip{font:11px/1.4 system-ui,sans-serif;color:#ffeac2;margin:7px 0 0}#loading .loading-tip:empty{display:none}#loading-sound{font:11px system-ui,sans-serif;min-height:44px;padding:8px 14px;color:#fff0cf;background:#4e3a287d;border:1px solid #ebc47a77;border-radius:25px;margin-top:6px}#loading-sound[hidden]{display:none}#loading-sound:focus-visible{outline:2px solid #fff2be;outline-offset:3px}.loading-fallback-title{display:none}
+#loading.art-unavailable .loading-fallback-title{display:block;font-size:32px;margin-bottom:30px}#loading.art-unavailable .loading-info{bottom:35%;padding:24px;background:#273e32cc;border-radius:20px}#loading.is-leaving{opacity:0;pointer-events:none}
+@supports selector(body:has(#loading)){body:has(#loading:not([hidden])) #sheet,body:has(#loading:not([hidden])) #sheet::backdrop{opacity:0}body:has(#loading.is-leaving:not([hidden])) #sheet,body:has(#loading.is-leaving:not([hidden])) #sheet::backdrop{animation:load-reveal .24s ease-out both}}
+@media(orientation:landscape){#loading .loading-content{width:min(94vw,960px);height:92vh;height:92svh;display:flex;align-items:center;justify-content:center;gap:clamp(24px,5vw,70px)}.loading-poster{position:relative;flex-shrink:0;width:51.75vh;width:51.75svh;height:100%;border-radius:14px;box-shadow:0 16px 70px #12291966}#loading .loading-info{position:relative;inset:auto;width:min(40vw,350px);text-align:center;padding:24px 20px;background:#2d382778;border:1px solid #ffe2a12b;border-radius:20px;backdrop-filter:blur(12px)}#loading .loading-message{font-size:clamp(21px,2.5vw,30px)}.loading-fallback-title{display:block;font-size:clamp(22px,3vw,35px);margin-bottom:24px;letter-spacing:.04em}.loading-status{margin-top:14px}}
+@media(max-width:360px){#loading .loading-info{left:8%;right:8%;bottom:4.8%}#loading .loading-message{font-size:18px}.loading-status{margin-top:7px}#loading #loading-detail{font-size:10px}}
+@keyframes load-sunlight{to{opacity:.4;transform:translate(-1%,1%)}}@keyframes load-mote{0%,100%{opacity:0;transform:translate(0,8px)}40%{opacity:.75}80%{opacity:.3;transform:translate(8px,-18px)}}@keyframes load-shine{from{transform:translateX(-150%)}to{transform:translateX(260%)}}@keyframes load-dots{50%{opacity:.35}}@keyframes load-reveal{to{opacity:1}}
+#loading.is-paused *,#loading.is-paused *:after,#loading[data-effects="false"] *,#loading[data-effects="false"] *:after{animation-play-state:paused!important}#loading[data-effects="false"] .loading-motes{display:none}@media(prefers-reduced-motion:reduce){#loading,#loading *,#loading *:after{animation:none!important;transition:none!important}.loading-motes,.loading-sunlight{display:none}}

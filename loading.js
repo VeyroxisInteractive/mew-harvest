@@ -20,24 +20,7 @@
 
  function configure(){
   if(configured)return;
-  // These are read-only existing APIs. Early script downloads may precede S.
-  try{
-   if(typeof S==='undefined'||!S.life)return;
-   const effects=S.life.effects!==false;
-   const time=effects&&typeof timeOfDay==='function'?timeOfDay():'Day';
-   const sky=effects&&typeof weather==='function'?weather():'Clear';
-   root.dataset.loadingTime=['Day','Evening','Night'].includes(time)?time.toLowerCase():'day';
-   root.dataset.weather=sky==='Rain'?'rain':'clear';
-   root.dataset.waterMotion=String(S.life.waterMotion!==false);
-   const dark=time==='Night'||time==='Evening',rare=random();
-   let accent=sky==='Rain'?pick(['quiet','leaf']):dark?pick(['fireflies','quiet','leaf']):pick(['butterflies','birds','leaf','cameo','quiet']);
-   if(!dark&&sky!=='Rain'&&rare<.06)accent=rare<.03?'rainbow':'special-butterfly';
-   root.dataset.accent=accent;
-   root.dataset.pair=String(accent==='butterflies'&&random()<.4);
-   if(accent==='cameo')root.querySelector('.loading-cameo').setAttribute('href','art/'+pick(['crop-12','coast-2'])+'.webp?v=31');
-   sound.hidden=!S.sound;
-   configured=true;
-  }catch{/* Default daylight and silence are always usable. */}
+  try{if(typeof S==='undefined'||!S.life)return;root.dataset.effects=String(S.life.effects!==false);root.dataset.loadingTime='day';root.dataset.weather='clear';sound.hidden=!S.sound;configured=true;}catch{}
  }
  function stopMessages(){clearTimeout(messageTimer);messageTimer=null;}
  function scheduleMessage(){
@@ -62,8 +45,8 @@
   path.setAttribute('aria-label','Loading farm artwork');
   path.setAttribute('aria-valuemin','0');path.setAttribute('aria-valuemax',String(total));path.setAttribute('aria-valuenow',String(count));
   path.setAttribute('aria-valuetext',count+' of '+total+' artwork files checked; preparing the farm next');
-  path.style.setProperty('--load-progress',count/total);
-  detail.textContent=count===total?'Artwork checked · preparing the farm':'Farm artwork · '+count+' / '+total;
+  path.style.setProperty('--load-progress',(count/total)*.94);const percent=document.getElementById('loading-percent');if(percent)percent.textContent=Math.floor(count/total*94)+'%';
+  detail.textContent=count===total?'Almost home…':'Getting your island ready';
   if(count/total>=.9&&root.dataset.loadingTime==='day'&&root.dataset.weather!=='rain')root.classList.add('is-sunrise');
  }
 
@@ -118,7 +101,7 @@
  function finish(){
   if(ended)return;
   ended=true;
-  try{
+  try{path.style.setProperty('--load-progress',1);const percent=document.getElementById('loading-percent');if(percent)percent.textContent='100%';message.textContent='Welcome home';detail.textContent='Your farm is ready';
    cleanup();root.setAttribute('aria-busy','false');root.classList.add('is-leaving');
    if(root.hidden||document.hidden||window.matchMedia('(prefers-reduced-motion: reduce)').matches){hide();return;}
    root.addEventListener('transitionend',transitionEnd);
@@ -127,6 +110,7 @@
   }catch{hide();}
  }
  window.MewLoading=Object.freeze({progress,finish});
+ const art=document.getElementById('loading-art');if(art){const failed=()=>root.classList.add('art-unavailable');art.addEventListener('error',failed,{once:true});if(art.complete&&!art.naturalWidth)failed();}
  try{
   hiddenObserver.observe(root,{attributes:true,attributeFilter:['hidden']});
   sound.addEventListener('click',toggleSound);
