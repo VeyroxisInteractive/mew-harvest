@@ -1,1 +1,119 @@
+name: Build Android test APK
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Install Android SDK
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Package current game
+        run: |
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          import shutil
+          root=Path.cwd()
+          out=root/'android'
+          def write(name,text):
+           p=out/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(text)
+          write('settings.gradle', '''pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          rootProject.name = 'MewHarvest'
+          include ':app'
+          ''')
+          write('build.gradle', "plugins { id 'com.android.application' version '8.9.2' apply false }\n")
+          write('gradle.properties','android.useAndroidX=true\norg.gradle.jvmargs=-Xmx3g\n')
+          write('app/build.gradle', '''plugins { id 'com.android.application' }
+          android {
+           namespace 'com.veyroxisinteractive.mewharvest'
+           compileSdk 35
+           defaultConfig {
+            applicationId 'com.veyroxisinteractive.mewharvest'
+            minSdk 23
+            targetSdk 35
+            versionCode 1
+            versionName '0.1-test'
+           }
+           buildTypes { debug { applicationIdSuffix '.test' } }
+           compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+          }
+          dependencies { implementation 'androidx.webkit:webkit:1.12.1' }
+          ''')
+          write('app/src/main/AndroidManifest.xml', '''<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+          <application android:label="MEW HARVEST Test" android:icon="@drawable/game_icon" android:allowBackup="false" android:supportsRtl="true" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:usesCleartextTraffic="false">
+          <activity android:name=".MainActivity" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode">
+          <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+          </activity></application></manifest>''')
+          write('app/src/main/java/com/veyroxisinteractive/mewharvest/MainActivity.java', '''package com.veyroxisinteractive.mewharvest;
+          import android.app.Activity;
+          import android.app.AlertDialog;
+          import android.os.Bundle;
+          import android.view.View;
+          import android.webkit.*;
+          import androidx.webkit.WebViewAssetLoader;
+          import java.io.ByteArrayInputStream;
+          public class MainActivity extends Activity {
+           private WebView web;
+           @Override public void onCreate(Bundle state) {
+            super.onCreate(state);
+            web=new WebView(this);
+            web.setBackgroundColor(0xff376d36);
+            web.setOnApplyWindowInsetsListener((v,insets)->{
+             v.setPadding(insets.getSystemWindowInsetLeft(),insets.getSystemWindowInsetTop(),insets.getSystemWindowInsetRight(),insets.getSystemWindowInsetBottom());return insets;
+            });
+            setContentView(web);web.requestApplyInsets();
+            WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);
+            s.setAllowFileAccess(false);s.setAllowContentAccess(false);s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+            s.setMediaPlaybackRequiresUserGesture(true);
+            WebViewAssetLoader loader=new WebViewAssetLoader.Builder().addPathHandler("/assets/",new WebViewAssetLoader.AssetsPathHandler(this)).build();
+            web.setWebViewClient(new WebViewClient(){
+             @Override public WebResourceResponse shouldInterceptRequest(WebView v,WebResourceRequest r){
+              WebResourceResponse result=loader.shouldInterceptRequest(r.getUrl());
+              return result!=null?result:new WebResourceResponse("text/plain","UTF-8",404,"Not found",java.util.Collections.emptyMap(),new ByteArrayInputStream(new byte[0]));
+             }
+             @Override public boolean shouldOverrideUrlLoading(WebView v,WebResourceRequest r){return !r.getUrl().toString().startsWith("https://appassets.androidplatform.net/assets/");}
+            });
+            web.loadUrl("https://appassets.androidplatform.net/assets/index.html");
+           }
+           @Override public void onBackPressed(){new AlertDialog.Builder(this).setMessage("Close MEW HARVEST?").setNegativeButton("Keep playing",null).setPositiveButton("Close",(d,w)->finish()).show();}
+           @Override protected void onPause(){web.evaluateJavascript("if(typeof saveGame==='function')saveGame();",null);web.onPause();super.onPause();}
+           @Override protected void onResume(){super.onResume();if(web!=null)web.onResume();}
+           @Override protected void onDestroy(){web.destroy();super.onDestroy();}
+          }
+          ''')
+          assets=out/'app/src/main/assets'
+          if assets.exists():shutil.rmtree(assets)
+          assets.mkdir(parents=True)
+          for p in root.iterdir():
+           if p.is_file() and p.suffix.lower() in {'.html','.js','.css','.png','.webp','.jpg','.jpeg','.svg','.json','.webmanifest','.mp3','.wav','.ogg'}:
+            shutil.copy2(p,assets/p.name)
+          shutil.copytree(root/'art',assets/'art')
+          index=assets/'index.html'
+          text=index.read_text()
+          assert "if('serviceWorker' in navigator)" in text,'Review service worker registration before packaging'
+          index.write_text(text.replace("if('serviceWorker' in navigator)","if(false /* APK uses bundled assets, not a web cache */)"))
+          icon=out/'app/src/main/res/drawable/game_icon.png';icon.parent.mkdir(parents=True,exist_ok=True)
+          shutil.copy2(root/'farmer-icon-512-v86.png',icon)
+          print('Android test project prepared. Web source untouched.')
+          PYTHON
+      - name: Build and lint
+        run: gradle -p android assembleDebug lintDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MEW-HARVEST-TEST-APK
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 7
 
