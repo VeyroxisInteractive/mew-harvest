@@ -1,0 +1,476 @@
+name: Build signed Android release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_code:
+        description: 'Increase for every update: 100, 101, 102'
+        required: true
+        default: '100'
+      version_name:
+        description: 'Display version: 1.0.0, 1.0.1'
+        required: true
+        default: '1.0.0'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    env:
+      VERSION_CODE: ${{ inputs.version_code }}
+      VERSION_NAME: ${{ inputs.version_name }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check version and signing secrets
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import os,re,base64,pathlib
+          code=os.environ['VERSION_CODE']
+          name=os.environ['VERSION_NAME']
+          assert re.fullmatch(r'[1-9][0-9]{0,9}',code) and int(code)<=2100000000,'Invalid version code'
+          assert re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+',name),'Use version format 1.0.0'
+          assert os.environ['KEYSTORE_BASE64'] and os.environ['KEYSTORE_PASSWORD'],'Add both Android signing secrets first'
+          target=pathlib.Path(os.environ['RUNNER_TEMP'])/'mew-release.jks'
+          target.write_bytes(base64.b64decode(os.environ['KEYSTORE_BASE64'],validate=True))
+          target.chmod(0o600)
+          PY
+
+          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate > "$RUNNER_TEMP/releases.json"
+
+          python3 - <<'PY'
+          import json,os,pathlib,re
+          text=(pathlib.Path(os.environ['RUNNER_TEMP'])/'releases.json').read_text()
+          decoder=json.JSONDecoder()
+          items=[]
+          while text.strip():
+              page,end=decoder.raw_decode(text.lstrip())
+              items.extend(page)
+              text=text.lstrip()[end:]
+          codes=[int(r['tag_name'][8:]) for r in items if re.fullmatch(r'android-[0-9]+',r.get('tag_name',''))]
+          assert not codes or int(os.environ['VERSION_CODE'])>max(codes),'Increase version_code above previous releases and drafts'
+          PY
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Install Android SDK
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+
+      - name: Prepare Android and update popup
+        run: |
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          import shutil, os, re
+
+          root=Path.cwd()
+          out=root/'android'
+          version_code=int(os.environ.get('VERSION_CODE','100'))
+          version_name=os.environ.get('VERSION_NAME','1.0.0')
+          assert 1 <= version_code <= 2100000000
+          assert re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+',version_name)
+
+          def write(name,text):
+              p=out/name
+              p.parent.mkdir(parents=True,exist_ok=True)
+              p.write_text(text)
+
+          write('settings.gradle', '''pluginManagement {
+              repositories { google(); mavenCentral(); gradlePluginPortal() }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories { google(); mavenCentral() }
+          }
+          rootProject.name = 'MewHarvest'
+          include ':app'
+          ''')
+
+          write('build.gradle', "plugins { id 'com.android.application' version '8.9.2' apply false }\n")
+          write('gradle.properties','android.useAndroidX=true\norg.gradle.jvmargs=-Xmx3g\n')
+
+          write('app/build.gradle', '''plugins {
+              id 'com.android.application'
+          }
+          android {
+              namespace 'com.veyroxisinteractive.mewharvest'
+              compileSdk 35
+
+              defaultConfig {
+                  applicationId 'com.veyroxisinteractive.mewharvest'
+                  minSdk 23
+                  targetSdk 35
+                  versionCode VERSION_CODE_VALUE
+                  versionName 'VERSION_NAME_VALUE'
+              }
+
+              signingConfigs {
+                  release {
+                      storeFile file(System.getenv('KEYSTORE_PATH') ?: 'missing-keystore')
+                      storePassword System.getenv('KEYSTORE_PASSWORD')
+                      keyAlias 'mewharvest'
+                      keyPassword System.getenv('KEYSTORE_PASSWORD')
+                  }
+              }
+
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.release
+                  }
+                  debug {
+                      applicationIdSuffix '.test'
+                  }
+              }
+
+              buildFeatures {
+                  buildConfig true
+              }
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          }
+
+          dependencies {
+              implementation 'androidx.webkit:webkit:1.12.1'
+          }
+          '''.replace('VERSION_CODE_VALUE',str(version_code)).replace('VERSION_NAME_VALUE',version_name))
+
+          write('app/src/main/AndroidManifest.xml', '''<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.INTERNET"/>
+              <application
+                  android:label="MEW HARVEST"
+                  android:icon="@drawable/game_icon"
+                  android:allowBackup="false"
+                  android:supportsRtl="true"
+                  android:theme="@android:style/Theme.Material.Light.NoActionBar"
+                  android:usesCleartextTraffic="false">
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true"
+                      android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>''')
+
+          write('app/src/main/java/com/veyroxisinteractive/mewharvest/MainActivity.java', '''package com.veyroxisinteractive.mewharvest;
+
+          import android.app.Activity;
+          import android.app.AlertDialog;
+          import android.os.Bundle;
+          import android.webkit.*;
+          import androidx.webkit.WebViewAssetLoader;
+          import java.io.ByteArrayInputStream;
+          import java.net.HttpURLConnection;
+          import java.net.URL;
+          import java.io.ByteArrayOutputStream;
+          import java.io.InputStream;
+          import org.json.*;
+          import android.content.Intent;
+          import android.net.Uri;
+
+          public class MainActivity extends Activity {
+              private WebView web;
+              private boolean checkingUpdate=false;
+              private boolean updateDialogShown=false;
+              private long lastUpdateCheck=0;
+
+              @Override
+              public void onCreate(Bundle state) {
+                  super.onCreate(state);
+                  web=new WebView(this);
+                  web.setBackgroundColor(0xff376d36);
+
+                  web.setOnApplyWindowInsetsListener((v,insets)->{
+                      v.setPadding(
+                          insets.getSystemWindowInsetLeft(),
+                          insets.getSystemWindowInsetTop(),
+                          insets.getSystemWindowInsetRight(),
+                          insets.getSystemWindowInsetBottom()
+                      );
+                      return insets;
+                  });
+
+                  setContentView(web);
+                  web.requestApplyInsets();
+
+                  WebSettings s=web.getSettings();
+                  s.setJavaScriptEnabled(true);
+                  s.setDomStorageEnabled(true);
+                  s.setAllowFileAccess(false);
+                  s.setAllowContentAccess(false);
+                  s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+                  s.setMediaPlaybackRequiresUserGesture(true);
+
+                  WebViewAssetLoader loader=new WebViewAssetLoader.Builder()
+                      .addPathHandler("/assets/",new WebViewAssetLoader.AssetsPathHandler(this))
+                      .build();
+
+                  web.setWebViewClient(new WebViewClient(){
+                      @Override
+                      public WebResourceResponse shouldInterceptRequest(WebView v,WebResourceRequest r){
+                          WebResourceResponse result=loader.shouldInterceptRequest(r.getUrl());
+                          return result!=null ? result : new WebResourceResponse(
+                              "text/plain","UTF-8",404,"Not found",
+                              java.util.Collections.emptyMap(),
+                              new ByteArrayInputStream(new byte[0])
+                          );
+                      }
+
+                      @Override
+                      public boolean shouldOverrideUrlLoading(WebView v,WebResourceRequest r){
+                          return !r.getUrl().toString().startsWith(
+                              "https://appassets.androidplatform.net/assets/"
+                          );
+                      }
+                  });
+
+                  web.loadUrl("https://appassets.androidplatform.net/assets/index.html");
+              }
+
+              private void checkUpdate(){
+                  if(checkingUpdate || updateDialogShown ||
+                      System.currentTimeMillis()-lastUpdateCheck<60000)return;
+
+                  checkingUpdate=true;
+                  lastUpdateCheck=System.currentTimeMillis();
+
+                  new Thread(()->{
+                      HttpURLConnection c=null;
+                      try {
+                          c=(HttpURLConnection)new URL(
+                              "https://api.github.com/repos/VeyroxisInteractive/mew-harvest/releases/latest"
+                          ).openConnection();
+
+                          c.setConnectTimeout(6000);
+                          c.setReadTimeout(6000);
+                          c.setInstanceFollowRedirects(false);
+                          c.setRequestProperty("Accept","application/vnd.github+json");
+                          c.setRequestProperty("User-Agent","MEW-HARVEST-Android");
+
+                          if(c.getResponseCode()!=200)return;
+
+                          ByteArrayOutputStream bytes=new ByteArrayOutputStream();
+                          try(InputStream in=c.getInputStream()){
+                              byte[] chunk=new byte[4096];
+                              int n;
+                              while((n=in.read(chunk))!=-1){
+                                  if(bytes.size()+n>262144)return;
+                                  bytes.write(chunk,0,n);
+                              }
+                          }
+
+                          JSONObject release=new JSONObject(bytes.toString("UTF-8"));
+
+                          if(release.optBoolean("draft") ||
+                              release.optBoolean("prerelease"))return;
+
+                          String tag=release.optString("tag_name");
+                          if(!tag.matches("android-[0-9]{1,10}"))return;
+
+                          long remote=Long.parseLong(tag.substring(8));
+                          if(remote<=BuildConfig.VERSION_CODE ||
+                              remote>2100000000L)return;
+
+                          if(getPreferences(MODE_PRIVATE).getLong(
+                              "later-"+remote,0
+                          )>System.currentTimeMillis())return;
+
+                          JSONArray assets=release.optJSONArray("assets");
+                          if(assets==null)return;
+
+                          String found=null;
+                          for(int i=0;i<assets.length();i++){
+                              JSONObject a=assets.getJSONObject(i);
+                              if(!a.optString("name").equals("MEW-HARVEST.apk") ||
+                                  a.optLong("size")<=0)continue;
+
+                              String url=a.optString("browser_download_url");
+                              String expected=
+                                  "https://github.com/VeyroxisInteractive/mew-harvest/releases/download/"
+                                  +tag+"/MEW-HARVEST.apk";
+
+                              if(url.equals(expected)){
+                                  found=url;
+                                  break;
+                              }
+                          }
+
+                          if(found==null)return;
+
+                          final String download=found;
+                          String body=release.optString("body","Improvements and fixes.");
+                          final String notes=body.substring(0,Math.min(body.length(),1200));
+                          final String name=release.optString("name",tag);
+
+                          runOnUiThread(()->{
+                              if(isFinishing() || isDestroyed() || updateDialogShown)return;
+                              updateDialogShown=true;
+
+                              new AlertDialog.Builder(this)
+                                  .setTitle("New update available")
+                                  .setMessage(
+                                      name+"\\n\\n"+notes+
+                                      "\\n\\nDownload the APK, then open it to install the update."
+                                  )
+                                  .setPositiveButton("Download update",(d,w)->{
+                                      try{
+                                          startActivity(new Intent(
+                                              Intent.ACTION_VIEW,Uri.parse(download)
+                                          ));
+                                      }catch(android.content.ActivityNotFoundException ex){
+                                          new AlertDialog.Builder(this)
+                                              .setMessage("Open GitHub releases in your browser to download the update.")
+                                              .setPositiveButton("OK",null)
+                                              .show();
+                                      }
+                                  })
+                                  .setNegativeButton("Later",(d,w)->
+                                      getPreferences(MODE_PRIVATE).edit()
+                                          .putLong(
+                                              "later-"+remote,
+                                              System.currentTimeMillis()+6*60*60*1000
+                                          )
+                                          .apply()
+                                  )
+                                  .show();
+                          });
+                      }catch(Exception ignored){
+                          // Offline or unavailable update service: keep playing.
+                      }finally{
+                          if(c!=null)c.disconnect();
+                          runOnUiThread(()->checkingUpdate=false);
+                      }
+                  },"update-check").start();
+              }
+
+              @Override
+              public void onBackPressed(){
+                  new AlertDialog.Builder(this)
+                      .setMessage("Close MEW HARVEST?")
+                      .setNegativeButton("Keep playing",null)
+                      .setPositiveButton("Close",(d,w)->finish())
+                      .show();
+              }
+
+              @Override
+              protected void onPause(){
+                  web.evaluateJavascript(
+                      "if(typeof saveGame==='function')saveGame();",null
+                  );
+                  web.onPause();
+                  super.onPause();
+              }
+
+              @Override
+              protected void onResume(){
+                  super.onResume();
+                  if(web!=null){
+                      web.onResume();
+                      checkUpdate();
+                  }
+              }
+
+              @Override
+              protected void onDestroy(){
+                  web.destroy();
+                  super.onDestroy();
+              }
+          }
+          ''')
+
+          assets=out/'app/src/main/assets'
+          if assets.exists():
+              shutil.rmtree(assets)
+          assets.mkdir(parents=True)
+
+          for p in root.iterdir():
+              if p.is_file() and p.suffix.lower() in {
+                  '.html','.js','.css','.png','.webp','.jpg',
+                  '.jpeg','.svg','.json','.webmanifest','.mp3','.wav','.ogg'
+              }:
+                  shutil.copy2(p,assets/p.name)
+
+          shutil.copytree(root/'art',assets/'art')
+
+          index=assets/'index.html'
+          text=index.read_text()
+          assert "if('serviceWorker' in navigator)" in text,'Review service worker registration before packaging'
+          index.write_text(text.replace(
+              "if('serviceWorker' in navigator)",
+              "if(false /* APK uses bundled assets, not a web cache */)"
+          ))
+
+          icon=out/'app/src/main/res/drawable/game_icon.png'
+          icon.parent.mkdir(parents=True,exist_ok=True)
+          shutil.copy2(root/'farmer-icon-512-v86.png',icon)
+
+          print('Android release project prepared with update popup.')
+          PYTHON
+
+      - name: Build signed APK and bundle
+        env:
+          KEYSTORE_PATH: ${{ runner.temp }}/mew-release.jks
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          gradle -p android assembleRelease bundleRelease lintRelease --no-daemon
+          mkdir -p release-output
+          cp android/app/build/outputs/apk/release/app-release.apk release-output/MEW-HARVEST.apk
+          cp android/app/build/outputs/bundle/release/app-release.aab release-output/MEW-HARVEST.aab
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose release-output/MEW-HARVEST.apk
+          sha256sum release-output/MEW-HARVEST.apk > release-output/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MEW-HARVEST-SIGNED-RELEASE
+          path: release-output/*
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Prepare draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > "$RUNNER_TEMP/release-notes.txt" <<'NOTES'
+          Update improvements and fixes.
+
+          Download MEW-HARVEST.apk for Android. Open the downloaded APK to install.
+          Existing release users: install over the previous release without uninstalling to retain local progress.
+          Website and old Test app saves do not transfer automatically.
+          NOTES
+
+          gh release create "android-$VERSION_CODE" release-output/* \
+            --target "$GITHUB_SHA" \
+            --title "MEW HARVEST $VERSION_NAME" \
+            --notes-file "$RUNNER_TEMP/release-notes.txt" \
+            --draft
+
+      - name: Remove signing key from runner
+        if: always()
+        run: rm -f "$RUNNER_TEMP/mew-release.jks"
