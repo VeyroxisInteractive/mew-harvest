@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#8cbc50"><title>MEW HARVEST – Free Cat Farming & Village Game Online</title>
+<meta name="description" content="Play MEW HARVEST, a free cat farming and village-building browser game by Veyroxis Interactive. Grow crops, craft items, meet cats and explore your island.">
+<link rel="canonical" href="https://veyroxisinteractive.github.io/mew-harvest/">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="MEW HARVEST">
+<meta property="og:title" content="MEW HARVEST – Free Cat Farming Game">
+<meta property="og:description" content="Play MEW HARVEST free online. Grow crops, craft goods and build a charming cat village.">
+<meta property="og:url" content="https://veyroxisinteractive.github.io/mew-harvest/">
+<meta property="og:image" content="https://veyroxisinteractive.github.io/mew-harvest/art/MEW_HARVEST_Logo.png?v=96">
+<meta property="og:image:alt" content="MEW HARVEST game logo with a cheerful farmer cat">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="MEW HARVEST">
+<meta name="twitter:description" content="Play MEW HARVEST free online: farm, craft and build your cat village.">
+<meta name="twitter:image" content="https://veyroxisinteractive.github.io/mew-harvest/art/MEW_HARVEST_Logo.png?v=96">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoGame","name":"MEW HARVEST","url":"https://veyroxisinteractive.github.io/mew-harvest/","description":"A free browser-based cat farming and village-building simulation game.","genre":["Farming simulation","Village simulation"],"gamePlatform":["Web browser","Mobile browser"],"operatingSystem":"Any modern web browser","applicationCategory":"Game","inLanguage":"en","author":{"@type":"Organization","name":"Veyroxis Interactive"},"image":"https://veyroxisinteractive.github.io/mew-harvest/art/MEW_HARVEST_Logo.png"}</script>
+<link rel="icon" href="art/MEW_HARVEST_Logo.png?v=96" type="image/png">
+   <link rel="stylesheet" href="style.css?v=83"><style id="loading-critical-106">#loading{position:fixed;inset:0;overflow:hidden;padding:0;display:block;z-index:100;background:#40513a}#loading .loading-content{position:absolute;inset:0;width:100%;height:100%;max-width:none;margin:0;padding:0;display:block}#loading .loading-poster{position:absolute;inset:0;width:100%;height:100%;overflow:hidden;border-radius:0}#loading #loading-art{display:block;position:absolute;left:50%;top:50%;right:auto;bottom:auto;width:var(--art-width,100%);height:var(--art-height,100%);max-width:none;max-height:none;object-fit:contain;transform:translate(-50%,-50%)}#loading .loading-info{position:absolute;left:8%;right:8%;bottom:max(20px,env(safe-area-inset-bottom));width:auto;text-align:center;color:#fff0cf}#loading .loading-backdrop{position:absolute;inset:-30px;z-index:-1}#loading[hidden]{display:none!important}@media(orientation:landscape){#loading .loading-poster{width:52%}#loading .loading-info{left:56%;right:5%;bottom:50%;transform:translateY(50%)}}</style><link rel="stylesheet" href="loading-sunrise-106.css"><link rel="manifest" href="manifest.webmanifest"><meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="stylesheet" href="homestead.css?v=91"><link rel="stylesheet" href="farm-tools.css?v=88"><link rel="preload" as="image" href="loading-art-104.webp"></head><body>
+<canvas id="island" tabindex="0" aria-label="Farm island. Drag grass to explore, pinch to zoom. Tap fields or buildings to interact."></canvas>
+<header><button id="level" data-open="journal" aria-label="Level and progress"></button><button id="coins" data-open="barn" aria-label="Coins and barn"></button><button id="farmToolsButton" type="button" aria-label="Farm Toolkit">📊</button><button data-open="settings" aria-label="Settings">⚙</button></header>
+ <div class="status"><button id="crew" data-open="crew"></button></div>
+<button id="guide" class="guide" data-open="overview"></button><div id="farmStatus" class="farm-status" aria-live="polite"></div>
+ <div class="camera"><button id="zoomIn" aria-label="Zoom in">＋</button><button id="zoomOut" aria-label="Zoom out">−</button><button id="center" aria-label="Centre farm">⌖</button></div>
+<div id="placement" hidden><b id="placementText"></b><span>Tap a clear tile to place</span><button id="cancelPlace">Cancel</button></div>
+ <button id="leaveZone" hidden>← Return to farm</button><div id="seeds" class="seeds" hidden></div>
+<nav><button data-open="orders"><span class="nav-icon">✓</span>Orders<i id="orderBadge"></i></button><button id="farm"><span class="nav-icon">F</span>Farm</button><button data-open="build"><span class="nav-icon">+</span>Build</button><button data-open="menu"><span class="nav-icon">≡</span>Menu</button></nav>
+<dialog id="sheet"><div class="sheet-head"><h1 id="sheetTitle"></h1><button id="close" aria-label="Close">✕</button></div><div id="sheetBody"></div></dialog>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="loading" aria-label="Loading MEW HARVEST" aria-busy="true">
+ <div class="loading-backdrop" aria-hidden="true"></div>
+ <div class="loading-content">
+  <div class="loading-poster" aria-hidden="true">
+   <img id="loading-art" src="loading-art-104.webp" width="941" height="1672" alt="" fetchpriority="high" decoding="async">
+   <div class="loading-sunlight"></div>
+   <div class="loading-motes"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  </div>
+  <div class="loading-info">
+   <b class="loading-fallback-title">MEW HARVEST</b>
+   <p class="loading-message" role="status" aria-live="polite"><span id="loading-message">Preparing your farm</span><span class="loading-dots" aria-hidden="true">…</span></p>
+   <div id="loading-progress" class="loading-path" role="progressbar" aria-label="Preparing your farm">
+    <div class="loading-path-fill"></div>
+    <div class="loading-pawprints" aria-hidden="true"><span>🐾</span><span>🐾</span><span>🐾</span></div>
+    <div class="loading-marker-track" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M6 25C0 9 15 6 29 2C28 18 22 31 6 25Z" fill="#77b446" stroke="#375f2a" stroke-width="1.5"/><path d="M4 29Q14 17 25 7M13 19L12 11M18 14L24 14" fill="none" stroke="#d5e998" stroke-width="1.5"/></svg></div>
+   </div>
+   <div class="loading-status"><span id="loading-detail">A little island. A lot of heart.</span><span id="loading-percent" aria-hidden="true"></span></div>
+   <p id="loading-tip" class="loading-tip"></p>
+   <button id="loading-sound" type="button" hidden aria-pressed="false">Listen to the farm</button>
+  </div>
+ </div>
+</div>
+<script src="loading-sunrise-106.js" async></script>
+     <script src="data.js?v=89"></script><script src="journey-data.js?v=89"></script><script src="expansion-data.js?v=90"></script><script src="homestead-data.js?v=93"></script><script src="production-expansion.js?v=90"></script><script src="habitats-data.js?v=91"></script><script src="village-growth-data.js?v=93"></script><script src="exploration-plus-data.js?v=94"></script><script src="engine.js?v=95"></script><script src="resources.js?v=83"></script>
+     <script src="transport.js?v=83"></script><script src="village.js?v=93"></script><script src="life.js?v=95"></script><script src="villageplus.js?v=83"></script>
+     <script src="landscape.js?v=83"></script><script src="community.js?v=83"></script><script src="living.js?v=83"></script><script src="coast.js?v=83"></script>
+      <script src="harvest.js?v=83"></script><script src="planner.js?v=83"></script><script src="journey.js?v=83"></script><script src="journey-ui.js?v=95"></script><script src="hat-shop.js?v=95"></script><script src="ui.js?v=95"></script><script src="farm-life.js?v=95"></script><script src="navigation.js?v=90"></script><script src="homestead.js?v=93"></script><script src="integration.js?v=91"></script><script src="habitats.js?v=91"></script><script src="blueprints.js?v=91"></script><script src="careers.js?v=92"></script><script src="seed-exchange.js?v=92"></script><script src="village-growth.js?v=93"></script><script src="cat-life-expansion.js?v=94"></script><script src="exploration-plus.js?v=94"></script><script src="cafe-service.js?v=95"></script><script src="crop-care.js?v=95"></script>
+<script src="feedback.js?v=83"></script><script src="riverflow.js?v=83"></script><script src="workers.js?v=95"></script><script src="terrain.js?v=83"></script><script src="sunrise-river.js?v=83"></script><script src="volcanic-land.js?v=83"></script><script src="gorge.js?v=83"></script><script src="stone-bridge.js?v=83"></script><script src="cat-hat.js?v=83"></script><script src="world.js?v=96"></script><script src="farm-tools.js?v=90"></script>
+<script>
+if('serviceWorker' in navigator){
+ const updating=!!navigator.serviceWorker.controller;
+ navigator.serviceWorker.addEventListener('controllerchange',()=>{if(updating)location.reload();},{once:true});
+ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+</script></body></html>
