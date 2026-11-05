@@ -1,0 +1,25 @@
+plugins { id 'com.android.application' }
+android {
+ namespace 'com.veyroxisinteractive.mewharvest'
+ compileSdk 35
+ defaultConfig {
+  applicationId 'com.veyroxisinteractive.mewharvest'
+  minSdk 23
+  targetSdk 35
+  versionCode Integer.parseInt(System.getenv('VERSION_CODE') ?: '123')
+  versionName System.getenv('VERSION_NAME') ?: '1.2.3'
+  resValue 'string', 'app_name', 'MEW HARVEST'
+ }
+ signingConfigs { release {
+  storeFile file(System.getenv('KEYSTORE_PATH') ?: 'missing-keystore')
+  storePassword System.getenv('KEYSTORE_PASSWORD')
+  keyAlias 'mewharvest'
+  keyPassword System.getenv('KEYSTORE_PASSWORD')
+ } }
+ buildTypes {
+  release { signingConfig signingConfigs.release }
+  debug { applicationIdSuffix '.test'; versionNameSuffix '-test'; resValue 'string', 'app_name', 'MEW HARVEST Test' }
+ }
+ buildFeatures { buildConfig true }
+ compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}
