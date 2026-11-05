@@ -1,10 +1,15 @@
  'use strict';
  const World=(()=>{
-  const canvas=$('island'),ctx=canvas.getContext('2d'),images={},customers=new Map(),actors=new Map(),pointers=new Map(),effects=[];
+  const canvas=$('island'),ctx=canvas.getContext('2d',{alpha:false}),images={},customers=new Map(),actors=new Map(),pointers=new Map(),effects=[];
   const camera={x:730,y:490,z:.9};let width=1,height=1,scale=1,last=0,clock=0,start=null,gesture=null,seen=new Set(),lastPoint=null,pinch=null,placement=null,ghost=null,movingMode=false,dragged=false,focus=0,frameId=0,holdTimer=null,holdMove=false,holdOffset={x:0,y:0},farmCamera=null,riverFlow=null,highlandRiverFlow=null,oceanFlow=null,waterfallFlow=null,roadPattern=null,oceanGradient=null,mainIslandArt=null;
 const iso=(x,y)=>({x:768+(x-y)*48,y:180+(x+y)*24});
 const grid=(x,y)=>({x:(x-768)/96+(y-180)/48,y:(y-180)/48-(x-768)/96});
   let terrain=null,terrainState=null,landscape=null,stoneBridge=null;
+ let parcelCache=null,parcelKeyCache='',parcelState=null;
+ function meadowParcels(){const key=[S.size,!!S.eastValley,S.valleyMapRevision,(S.parcels||[]).join(';'),!!terrain].join('|');if(parcelState!==S||key!==parcelKeyCache){parcelState=S;parcelKeyCache=key;parcelCache=availableParcels();}return parcelCache;}
+ let renderDensity=0,renderQuality='';
+ function density(){return Math.min(devicePixelRatio||1,({low:1,medium:1.25,high:2})[S.interface?.quality]||1.25);}
+ function visibleAt(p,margin=500){const z=scale*camera.z;return p.x>=camera.x-width/(2*z)-margin&&p.x<=camera.x+width/(2*z)+margin&&p.y>=camera.y-height/(2*z)-margin&&p.y<=camera.y+height/(2*z)+margin;}
  const dryRiverMask=new Path2D();dryRiverMask.rect(-12000,-12000,30000,30000);SUNRISE_RIVER.polygon.map(p=>iso(...p)).forEach((p,i)=>i?dryRiverMask.lineTo(p.x,p.y):dryRiverMask.moveTo(p.x,p.y));dryRiverMask.closePath();
  const headwater=iso(...SUNRISE_RIVER.source);[[headwater.x-44,headwater.y-211],[headwater.x-4,headwater.y-211],[headwater.x+34,headwater.y-6],[headwater.x-34,headwater.y-6]].forEach(([x,y],i)=>i?dryRiverMask.lineTo(x,y):dryRiverMask.moveTo(x,y));dryRiverMask.closePath();
   const riverSceneryHidden=o=>S.eastValley&&inValley(o.x,o.y)&&(o.kind==='resource'||o.kind==='tree'||['riverstones','fieldborder'].includes(o.type))&&(sunriseRiverTile(o.x,o.y)||o.kind==='resource'&&(sunriseApproachTile(o.x,o.y)||landscape?.coversGround(iso(o.x+.5,o.y+.5)))||sunriseMountainTile(o.x,o.y)&&!o.type.includes('rock'));
@@ -24,7 +29,7 @@ function terrainSurfaces(){
    }
    return true;
  }
-   function resize(){const r=canvas.getBoundingClientRect();width=r.width;height=r.height;const d=Math.min(devicePixelRatio||1,2);canvas.width=Math.round(width*d);canvas.height=Math.round(height*d);ctx.setTransform(d,0,0,d,0,0);oceanGradient=null;scale=Math.max(width/1536,height/1024);}
+   function resize(){const r=canvas.getBoundingClientRect();width=r.width;height=r.height;const d=density();renderDensity=d;renderQuality=S.interface?.quality;canvas.width=Math.round(width*d);canvas.height=Math.round(height*d);ctx.setTransform(d,0,0,d,0,0);oceanGradient=null;scale=Math.max(width/1536,height/1024);}
 function toWorld(p){return{x:camera.x+(p.x-width/2)/(scale*camera.z),y:camera.y+(p.y-height/2)/(scale*camera.z)};}
 function pointer(e){const r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};}
   function limits(){camera.z=Math.max(S.eastValley?.06:.7,Math.min(2.3,camera.z));camera.x=Math.max(-950,Math.min(S.eastValley?5200:2500,camera.x));camera.y=Math.max(-260,Math.min(S.eastValley?3500:1850,camera.y));}
@@ -63,10 +68,13 @@ function use(o){if(!o)return;if(o.kind==='tractor'){openPanel('logistics');retur
   for(const b of S.buildings)block(b,BUILDINGS[b.type]?.size||2);for(const d of S.decor)if(!['path','gate','arch'].includes(d.type))block(d,DECOR_SHOP[d.type]?.size||1);
   for(const t of S.trees)block(t,1);for(const t of S.resources||[])if(t.type!=='grass'&&!t.cleared&&!(t.respawn>now()))block(t,1);
   const road=new Set(S.decor.filter(d=>d.type==='path').map(d=>key(d.x,d.y)));const shop=S.buildings.find(b=>b.type==='store'),roadY=shop?shopRoadRow():-99;
+  if(blocked.has(key(gx,gy))&&(gx!==sx||gy!==sy))return [];
   const start=key(sx,sy),open=[{x:sx,y:sy,cost:0}],prev=new Map([[start,null]]),costs=new Map([[start,0]]);let found=null;
-  while(open.length){open.sort((a,b)=>b.cost-a.cost);const p=open.pop(),pk=key(p.x,p.y);if(p.cost!==costs.get(pk))continue;if(p.x===gx&&p.y===gy){found=p;break;}
+  function push(p){let i=open.length;open.push(p);while(i){const parent=(i-1)>>1;if(open[parent].cost<=p.cost)break;open[i]=open[parent];i=parent;}open[i]=p;}
+  function pop(){const first=open[0],tail=open.pop();if(open.length){let i=0;while(i*2+1<open.length){let child=i*2+1;if(child+1<open.length&&open[child+1].cost<open[child].cost)child++;if(open[child].cost>=tail.cost)break;open[i]=open[child];i=child;}open[i]=tail;}return first;}
+  while(open.length){const p=pop(),pk=key(p.x,p.y);if(p.cost!==costs.get(pk))continue;if(p.x===gx&&p.y===gy){found=p;break;}
    for(const[dx,dy]of [[1,0],[0,1],[-1,0],[0,-1]]){const x=p.x+dx,y=p.y+dy,k=key(x,y);if(x<FARM_GREEN_BOUNDS.x1||y<FARM_GREEN_BOUNDS.y1||x>=(S.eastValley?SUNRISE_MAP.x+SUNRISE_MAP.size+8:FARM_GREEN_BOUNDS.x2)||y>=(S.eastValley?Math.max(40,SUNRISE_MAP.y+SUNRISE_MAP.size+8):FARM_GREEN_BOUNDS.y2)||riverBlocked(x,y)||blocked.has(k)&&k!==start)continue;
-    const next=p.cost+(road.has(k)||y===roadY&&shop&&x>=shop.x+2?.72:1);if(next>=(costs.get(k)??Infinity))continue;costs.set(k,next);prev.set(k,p);open.push({x,y,cost:next});}}
+    const next=p.cost+(road.has(k)||y===roadY&&shop&&x>=shop.x+2?.72:1);if(next>=(costs.get(k)??Infinity))continue;costs.set(k,next);prev.set(k,p);push({x,y,cost:next});}}
   if(!found)return [];const path=[];let p=found;while(p&&!(p.x===sx&&p.y===sy)){path.unshift({x:p.x+.5,y:p.y+.5});p=prev.get(key(p.x,p.y));}path.push({x:tx,y:ty});return path;
  }
  function moveRoute(a,tx,ty){
@@ -178,7 +186,7 @@ function catSprite(c,a){return 'biped-'+((a.walking?1:0)*4+c.id%4);}
 function customerSpot(i){const b=S.buildings.find(b=>b.type==='store');return {x:b.x+2.5+i*.72,y:shopRoadRow()+.5};}
 function roadCells(){const b=S.buildings.find(b=>b.type==='store');if(!b)return [];const y=shopRoadRow(),a=[],end=S.eastValley&&inValley(b.x,b.y)?SUNRISE_MAP.x+SUNRISE_MAP.size+6:S.eastValley?mainShore(S):S.size+8;for(let x=b.x+2;x<end;x++)a.push({x,y});return a;}
  function drawMeadow(){if(S.eastValley)return;const view=toWorld({x:0,y:0}),view2=toWorld({x:width,y:height});
-    for(const d of availableParcels()){const p=iso(d.x+2,d.y+2);if(p.x<view.x-80||p.x>view2.x+80||p.y<view.y-80||p.y>view2.y+80)continue;if(d.y+4<=8||d.y>=14)diamond(p.x,p.y,384,192,'#284c140a','#e6e8a26a');if(d.y<8||d.y>=12)bubble('🔒 '+d.price,p.x,p.y);}}
+    for(const d of meadowParcels()){const p=iso(d.x+2,d.y+2);if(p.x<view.x-80||p.x>view2.x+80||p.y<view.y-80||p.y>view2.y+80)continue;if(d.y+4<=8||d.y>=14)diamond(p.x,p.y,384,192,'#284c140a','#e6e8a26a');if(d.y<8||d.y>=12)bubble('🔒 '+d.price,p.x,p.y);}}
 function equippedPiece(c,slot){return c.outfit?.[slot]||({head:c.hat,body:c.vest}[slot]||null);}
 function wearableColor(c,slot,d){return c.outfitColors?.[slot]||d?.color||'blue';}
 function drawWearable(c,slot,p,size,flip){if(slot==='head'&&typeof CatHatArt!=='undefined'&&typeof HatShop!=='undefined'){const hat=HatShop.equipped(c);if(hat)CatHatArt.draw(ctx,p,size,flip,hat);}} // Fitted woven straw hats; no clothing/glasses overlays.
@@ -271,7 +279,8 @@ function drawChannel(){
 function frame(t){
  if(typeof IslandWonders!=='undefined'&&IslandWonders.active||typeof OceanSecrets!=='undefined'&&OceanSecrets.active||typeof OceanRoutes!=='undefined'&&OceanRoutes.active){last=t;frameId=requestAnimationFrame(frame);return;}
 
- const fps=({low:30,medium:45,high:60})[S.interface?.quality]||60;if(t-last<1000/fps-1){frameId=requestAnimationFrame(frame);return;}
+ if(renderDensity!==density()||renderQuality!==S.interface?.quality)resize();
+ const fps=({low:30,medium:30,high:60})[S.interface?.quality]||60;if(t-last<1000/fps-1){frameId=requestAnimationFrame(frame);return;}
    const dt=Math.min(.05,(t-last)/1000||.016);last=t;clock+=dt;animateCats(dt);if(followingTractor&&typeof CargoTransport!=='undefined'){const q=CargoTransport.active(),p=q?CargoTransport.position(q):S.village.tractor;if(p){const at=iso(p.x,p.y);camera.x=at.x;camera.y=at.y;}}ctx.clearRect(0,0,width,height);if(!oceanGradient){oceanGradient=ctx.createLinearGradient(0,0,width,height);oceanGradient.addColorStop(0,'#3c9fb5');oceanGradient.addColorStop(.45,'#65c9ca');oceanGradient.addColorStop(1,'#2d8fa8');}ctx.fillStyle=oceanGradient;ctx.fillRect(0,0,width,height);ctx.save();ctx.translate(width/2,height/2);ctx.scale(scale*camera.z,scale*camera.z);ctx.translate(-camera.x,-camera.y);
   if(activeZone){OceanSecrets.positionPortal(0,0,false);drawZone();ctx.restore();drawWeather();frameId=requestAnimationFrame(frame);return;}
       drawWorldSurroundings();drawChannel();drawValley();
@@ -280,7 +289,7 @@ function frame(t){
  for(const d of S.decor.filter(d=>d.type==='path'))drawDecor(d);
  if(S.village?.pier&&typeof FarmLife!=='undefined'){const q=S.farmLife?.shipment,t=q?.end?Math.max(0,Math.min(1,1-(q.end-now())/180000)):0,trip=q?.end&&q.end>now()?Math.sin(t*Math.PI)*12:0,p=iso(11+trip,13.2+trip*.35);sprite('village-1',p.x,p.y+18+Math.sin(clock)*2,125,125,t>.5);if(q&&!q.end){const n=Object.keys(q.loaded).length;for(let i=0;i<n;i++)sprite('village-4',p.x-24+i*17,p.y-5,24);}if(q?.end&&q.end<=now())bubble('✓ Ship returned',p.x,p.y-65);}
  for(const b of S.buildings){const p=footprint({...b,size:2});const n=b.type==='house'?0:b.type==='store'?1:BUILDINGS[b.type].animal?2:1;sprite('ground-'+n,p.x,p.y+67,260,138);}
- const scene=worldObjects().filter(o=>o.type!=='path').map(o=>({y:footprint(o).y,draw:()=>{ctx.save();if(S.eastValley&&inValley(o.x,o.y)&&['tree','resource'].includes(o.kind))ctx.clip(dryRiverMask,'evenodd');if(o.kind==='village')drawVillageSite(o);else if(o.kind==='field')drawField(o);else if(o.kind==='tree')drawTree(o);else if(o.kind==='resource')drawResource(o);else if(o.kind==='decor')drawDecor(o);else drawBuilding(o);ctx.restore();}}));
+ const scene=worldObjects().filter(o=>o.type!=='path'&&visibleAt(footprint(o),o.type==='mountain'?1400:500)).map(o=>({y:footprint(o).y,draw:()=>{ctx.save();if(S.eastValley&&inValley(o.x,o.y)&&['tree','resource'].includes(o.kind))ctx.clip(dryRiverMask,'evenodd');if(o.kind==='village')drawVillageSite(o);else if(o.kind==='field')drawField(o);else if(o.kind==='tree')drawTree(o);else if(o.kind==='resource')drawResource(o);else if(o.kind==='decor')drawDecor(o);else drawBuilding(o);ctx.restore();}}));
     if(S.eastValley)scene.push({y:iso(SUNRISE_MAP.x+.25,SUNRISE_MAP.bridgeY+SUNRISE_MAP.bridgeWidth+.2).y+1,draw:()=>stoneBridge?.foreground(ctx)});
  for(const c of S.cats){const a=actors.get(c.id),p=iso(a.x,a.y);scene.push({y:p.y+26,draw:()=>{shadow(p.x,p.y,10);if(c.job?.kind==='visit'||c.job?.kind==='home'&&!a.walking)return;dressedCat(c,catSprite(c,a),p,65,a.flip);if(!a.walking&&!c.job&&a.routine==='Resting')text('z',p.x+15,p.y-55,14);if(!a.walking&&!c.job&&a.routine==='Chatting'&&Math.floor(clock)%12<3)text('♥',p.x,p.y-62,14,'#dd836e');}});}
  if(S.village?.tractor&&typeof CargoTransport!=='undefined'&&typeof TractorArt!=='undefined'){const q=CargoTransport.active();if(!q||CargoTransport.progress(q).phase==='boarding'){const t=S.village.tractor,p=iso(t.x,t.y);scene.push({y:p.y+26,draw:()=>TractorArt.draw(ctx,p,null,{phase:'parked',loaded:false,driving:false,dx:1,dy:0},clock,false)});}}

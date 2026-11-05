@@ -13,11 +13,11 @@ on:
       version_code:
         description: 'Increase for every update: 100, 101, 102'
         required: true
-        default: '123'
+        default: '124'
       version_name:
         description: 'Display version: 1.0.0, 1.0.1'
         required: true
-        default: '1.2.3'
+        default: '1.2.4'
 
 permissions:
   contents: write
@@ -32,8 +32,8 @@ jobs:
     timeout-minutes: 25
 
     env:
-      VERSION_CODE: ${{ inputs.version_code || '123' }}
-      VERSION_NAME: ${{ inputs.version_name || '1.2.3' }}
+      VERSION_CODE: ${{ inputs.version_code || '124' }}
+      VERSION_NAME: ${{ inputs.version_name || '1.2.4' }}
 
     steps:
       - uses: actions/checkout@v4

@@ -6,8 +6,8 @@ android {
   applicationId 'com.veyroxisinteractive.mewharvest'
   minSdk 23
   targetSdk 35
-  versionCode Integer.parseInt(System.getenv('VERSION_CODE') ?: '123')
-  versionName System.getenv('VERSION_NAME') ?: '1.2.3'
+  versionCode Integer.parseInt(System.getenv('VERSION_CODE') ?: '124')
+  versionName System.getenv('VERSION_NAME') ?: '1.2.4'
   resValue 'string', 'app_name', 'MEW HARVEST'
  }
  signingConfigs { release {
