@@ -49,9 +49,9 @@ public class MainActivity extends Activity {
  }
  private void message(String text){runOnUiThread(()->{if(!isFinishing()&&!isDestroyed())new AlertDialog.Builder(this).setTitle("Game updates").setMessage(text).setPositiveButton("OK",null).show();});}
  private void checkUpdate(boolean manual){
-  if(checking){if(manual)android.widget.Toast.makeText(this,"Already checking…",0).show();return;}
+  if(checking){if(manual)android.widget.Toast.makeText(this,"Already checking…",android.widget.Toast.LENGTH_SHORT).show();return;}
   if(showing||(!manual&&System.currentTimeMillis()-checkedAt<60000))return;
-  checking=true;checkedAt=System.currentTimeMillis();if(manual)android.widget.Toast.makeText(this,"Checking GitHub releases…",0).show();
+  checking=true;checkedAt=System.currentTimeMillis();if(manual)android.widget.Toast.makeText(this,"Checking GitHub releases…",android.widget.Toast.LENGTH_SHORT).show();
   new Thread(()->{
    HttpURLConnection c=null;
    try{
@@ -79,3 +79,4 @@ public class MainActivity extends Activity {
  @Override protected void onResume(){super.onResume();if(web!=null){web.onResume();checkUpdate(false);}}
  @Override protected void onDestroy(){if(web!=null)web.destroy();super.onDestroy();}
 }
+
